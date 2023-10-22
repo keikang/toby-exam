@@ -6,15 +6,17 @@ import org.springframework.stereotype.Service;
 import java.sql.*;
 
 @Service
-public class UserDao {
+public abstract class UserDao {
 
     public void add(User user) throws ClassNotFoundException, SQLException {
         Class.forName("org.postgresql.Driver");
         Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:8432/postgres", "age", "age");
 
-        String insertQuery = """
+        conn = getConnection();
+
+        String insertQuery = """                   
                 INSERT INTO toby_exam.users
-                (id, "name", "password")
+                (id, name, password)
                 VALUES('%s', '%s', '%s');
                                 
                 """.formatted(user.getId(), user.getName(), user.getPassword());
@@ -30,6 +32,49 @@ public class UserDao {
         ps.close();
         conn.close();
 
+    }
+
+    public User get(String id) throws ClassNotFoundException, SQLException {
+        Connection conn = getConnection();
+        User user = null;
+        String selectQuery = """
+            SELECT id, name, password
+            FROM toby_exam.users
+            where id = '%s';              
+                """.formatted(id);
+
+        PreparedStatement ps = conn.prepareStatement(selectQuery);
+        ResultSet rs = ps.executeQuery();
+
+        if(rs.next()){
+            user = new User();
+            user.setId(rs.getString("id"));
+            user.setName(rs.getString("name"));
+            user.setPassword(rs.getString("password"));
+        }
+
+        return user;
+    }
+
+    public void deleteById(String id) throws ClassNotFoundException, SQLException {
+        Connection conn = getConnection();
+
+        String deleteQuery = """
+            DELETE FROM toby_exam.users
+            where id = '%s';              
+                """.formatted(id);
+
+        PreparedStatement ps = conn.prepareStatement(deleteQuery);
+        ps.executeUpdate();
+
+    }
+
+    public abstract Connection getConnection() throws ClassNotFoundException, SQLException;
+
+    public Connection getConnection2() throws ClassNotFoundException, SQLException {
+        Class.forName("org.postgresql.Driver");
+        Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:8432/postgres", "age", "age");
+        return conn;
     }
 
     public void testGraphizer() throws ClassNotFoundException, SQLException {
@@ -90,25 +135,5 @@ public class UserDao {
 
     }
 
-    public User get(String id) throws ClassNotFoundException, SQLException {
-        Class.forName("org.postgresql.Driver");
-        Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:8432/postgres", "age", "age");
 
-        String selectQuery = """
-            SELECT id, "name", "password"
-            FROM toby_exam.users
-            WHREE id = %s;              
-                """.formatted(id);
-
-        PreparedStatement ps = conn.prepareStatement(selectQuery);
-        ResultSet rs = ps.executeQuery();
-        rs.next();
-
-        User user = new User();
-        user.setId(rs.getString("id"));
-        user.setName(rs.getString("name"));
-        user.setPassword(rs.getString("password"));
-
-        return user;
-    }
 }
